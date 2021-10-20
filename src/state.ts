@@ -1,24 +1,31 @@
-import { PrimitiveAtom, useAtom } from 'jotai';
+import { useAtom } from 'jotai';
 import { useCallback, useMemo } from 'react';
 import { generateOrderProps, getOrderIdbKey, getOrderIdsIdbKey, Order, OrderProps } from './models/Order';
 import { get as getItem, set as setItem } from 'idb-keyval';
 import { atomWithStorage } from 'jotai/utils';
 
 export function atomWithAsyncStorage<T>(key: string, initial: T) {
+  getItem<T>(key).then((value) => {
+    console.log('initial getter');
+    value ?? setItem(key, initial);
+  });
   return atomWithStorage<T>(key, initial, {
     setItem,
-    getItem: (key) => getItem<T>(key).then((value) => value ?? initial),
+    getItem: (key) => getItem<T>(key).then((value) => {
+      console.log('getter');
+      return (value ?? initial);
+    }),
   });
 }
 
-export const orderMap: Record<OrderProps['id'], PrimitiveAtom<OrderProps>> = {};
+// export const orderMap: Record<OrderProps['id'], PrimitiveAtom<OrderProps>> = {};
 
 export const orderIdsAtom = atomWithAsyncStorage<OrderProps['id'][]>(getOrderIdsIdbKey(), []);
 
-export const orderAtom = (id: OrderProps['id']) => orderMap[id];
+// export const orderAtom = (id: OrderProps['id']) => orderMap[id];
 
 export function useOrder(id: string): [Order, (updatedOrder: any) => void | Promise<void>] {
-  const [order, updateOrder] = useAtom(orderMap[id]);
+  const [order, updateOrder] = useAtom(atomWithAsyncStorage<OrderProps>(getOrderIdbKey(id), {} as OrderProps));
 
   const orderInstance = useMemo(() => new Order(order), [order]);
 
@@ -41,7 +48,7 @@ export function useCreateOrder() {
 
   const addOrder = useCallback(() => {
     const newOrderProps = generateOrderProps();
-    orderMap[newOrderProps.id] = atomWithAsyncStorage<OrderProps>(getOrderIdbKey(newOrderProps.id), newOrderProps);
+    atomWithAsyncStorage<OrderProps>(getOrderIdbKey(newOrderProps.id), newOrderProps);
     setIds((currentIds) => ([...currentIds, newOrderProps.id]));
   }, [setIds]);
 
