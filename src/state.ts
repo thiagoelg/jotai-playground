@@ -4,10 +4,19 @@ import { generateOrderProps, getOrderIdbKey, getOrderIdsIdbKey, Order, OrderProp
 import { get as getItem, set as setItem } from 'idb-keyval';
 import { atomWithStorage } from 'jotai/utils';
 
-export function atomWithAsyncStorage<T>(key: string, initial: T) {
-  return atomWithStorage<T>(key, initial, {
+export function atomWithAsyncStorage<T>(key: string, initial?: T) {
+  return atomWithStorage<T>(key, initial || {} as T, {
     setItem,
-    getItem: (key) => getItem<T>(key).then((value) => value ?? initial),
+    getItem: (key) =>
+      getItem<T>(key).then((value) => {
+        if (value !== undefined) {
+          return value;
+        }
+        if (initial !== undefined) {
+          setItem(key, initial);
+        }
+        return initial as T;
+      }),
   });
 }
 
