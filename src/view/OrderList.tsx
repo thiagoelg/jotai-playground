@@ -1,5 +1,5 @@
 import { useAtom } from 'jotai';
-import React, { useEffect } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { orderIdsAtom, useCreateOrder } from '../state';
 import { OrderDetails } from './OrderDetails';
 import './OrderList.css';
@@ -17,7 +17,9 @@ export const OrderList = () => {
       <button onClick={addOrder}>Criar Order</button>
       <div className="OrderList">
         {ids.map((id) => (
-          <OrderDetails id={id} key={id} />
+          <Suspense fallback="Loading order details..." key={id}>
+            <OrderDetails id={id} />
+          </Suspense>
         ))}
       </div>
     </div>
