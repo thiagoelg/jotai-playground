@@ -1,11 +1,19 @@
-import { atom, useAtom, WritableAtom } from 'jotai';
+import { PrimitiveAtom, useAtom } from 'jotai';
 import { useCallback, useMemo } from 'react';
 import { generateOrderProps, getOrderIdbKey, getOrderIdsIdbKey, Order, OrderProps } from './models/Order';
-import { set as idbSet, get as idbGet } from 'idb-keyval';
+import { get as getItem, set as setItem } from 'idb-keyval';
+import { atomWithStorage } from 'jotai/utils';
 
-export const orderMap: Record<OrderProps['id'], WritableAtom<OrderProps, OrderProps>> = {};
+export function atomWithAsyncStorage<T>(key: string, initial: T) {
+  return atomWithStorage<T>(key, initial, {
+    setItem,
+    getItem: (key) => getItem<T>(key).then((value) => value ?? initial),
+  });
+}
 
-export const orderIdsAtom = atom<OrderProps['id'][]>([]);
+export const orderMap: Record<OrderProps['id'], PrimitiveAtom<OrderProps>> = {};
+
+export const orderIdsAtom = atomWithAsyncStorage<OrderProps['id'][]>(getOrderIdsIdbKey(), []);
 
 export const orderAtom = (id: OrderProps['id']) => orderMap[id];
 
@@ -14,10 +22,9 @@ export function useOrder(id: string): [Order, (updatedOrder: any) => void | Prom
 
   const orderInstance = useMemo(() => new Order(order), [order]);
 
-  const updateOrderFromIntance = useCallback(async (updatedOrder) => {
+  const updateOrderFromIntance = useCallback((updatedOrder) => {
     const primitifiedOrder = updatedOrder.primitify();
     updateOrder(primitifiedOrder);
-    await idbSet(getOrderIdbKey(primitifiedOrder.id), primitifiedOrder);
   }, [updateOrder]);
 
   return [orderInstance, updateOrderFromIntance];
@@ -32,28 +39,11 @@ export function useOrdersIds() {
 export function useCreateOrder() {
   const [, setIds] = useAtom(orderIdsAtom);
 
-  const addOrder = useCallback(async () => {
+  const addOrder = useCallback(() => {
     const newOrderProps = generateOrderProps();
-    orderMap[newOrderProps.id] = atom(newOrderProps);
-    setIds((currentIds) => {
-      const updatedIds = [...currentIds, newOrderProps.id];
-      idbSet(getOrderIdsIdbKey(), updatedIds);
-      return updatedIds;
-    });
-    await idbSet(getOrderIdbKey(newOrderProps.id), newOrderProps);
+    orderMap[newOrderProps.id] = atomWithAsyncStorage<OrderProps>(getOrderIdbKey(newOrderProps.id), newOrderProps);
+    setIds((currentIds) => ([...currentIds, newOrderProps.id]));
   }, [setIds]);
 
   return addOrder;
 }
-
-export const initAtoms = atom(
-  get => get(orderIdsAtom),
-  async (_get, set) => {
-    const ids = await idbGet(getOrderIdsIdbKey()) || [];
-    set(orderIdsAtom, ids);
-    for (const id of ids) {
-      const order = await idbGet(getOrderIdbKey(id));
-      orderMap[order.id] = atom(order);
-    }
-  }
-);
