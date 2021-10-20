@@ -1,37 +1,40 @@
-import { useAtom } from 'jotai';
+import { atom, useAtom } from 'jotai';
 import { useCallback, useMemo } from 'react';
 import { generateOrderProps, getOrderIdbKey, getOrderIdsIdbKey, Order, OrderProps } from './models/Order';
-import { get as getItem, set as setItem } from 'idb-keyval';
-import { atomWithStorage } from 'jotai/utils';
+import { get, set } from 'idb-keyval';
+import { atomWithStorage, useUpdateAtom } from 'jotai/utils';
 
-export function atomWithAsyncStorage<T>(key: string, initial: T) {
-  getItem<T>(key).then((value) => {
-    console.log('initial getter');
-    value ?? setItem(key, initial);
-  });
+function atomWithAsyncStorage<T>(key: string, initial: T, storeName?: string) {
   return atomWithStorage<T>(key, initial, {
-    setItem,
-    getItem: (key) => getItem<T>(key).then((value) => {
-      console.log('getter');
-      return (value ?? initial);
-    }),
+    setItem: (key, value) => set(key, value),
+    getItem: (key) =>
+      get<T>(key).then((value) => {
+        if (value !== undefined) {
+          return value;
+        }
+        set(key, initial);
+        return initial;
+      }),
   });
 }
 
-// export const orderMap: Record<OrderProps['id'], PrimitiveAtom<OrderProps>> = {};
+export const ordersAtom = atomWithAsyncStorage<OrderProps[]>('order', []);
 
-export const orderIdsAtom = atomWithAsyncStorage<OrderProps['id'][]>(getOrderIdsIdbKey(), []);
+// export const orderIdsAtom = atomWithAsyncStorage<OrderProps['id'][]>(getOrderIdsIdbKey(), []);
+export const orderIdsAtom = atom((get) => get(ordersAtom).map((order) => order.id));
 
-// export const orderAtom = (id: OrderProps['id']) => orderMap[id];
+export const singleOrderAtom = (id: OrderProps['id']) => atom((get) => get(ordersAtom).find((order) => order.id === id)!);
 
 export function useOrder(id: string): [Order, (updatedOrder: any) => void | Promise<void>] {
-  const [order, updateOrder] = useAtom(atomWithAsyncStorage<OrderProps>(getOrderIdbKey(id), {} as OrderProps));
+  const orderAtom = singleOrderAtom(id);
+  const [order, updateOrder] = useAtom(orderAtom);
+  const updateOrders = useUpdateAtom(ordersAtom);
 
   const orderInstance = useMemo(() => new Order(order), [order]);
 
   const updateOrderFromIntance = useCallback((updatedOrder) => {
     const primitifiedOrder = updatedOrder.primitify();
-    updateOrder(primitifiedOrder);
+    updateOrders((currentOrders) => currentOrders.map((order) => order.id === primitifiedOrder.id ? primitifiedOrder : order));
   }, [updateOrder]);
 
   return [orderInstance, updateOrderFromIntance];
@@ -44,13 +47,16 @@ export function useOrdersIds() {
 }
 
 export function useCreateOrder() {
-  const [, setIds] = useAtom(orderIdsAtom);
+  const [, setOrders] = useAtom(ordersAtom);
 
   const addOrder = useCallback(() => {
     const newOrderProps = generateOrderProps();
-    atomWithAsyncStorage<OrderProps>(getOrderIdbKey(newOrderProps.id), newOrderProps);
-    setIds((currentIds) => ([...currentIds, newOrderProps.id]));
-  }, [setIds]);
+    // atomWithAsyncStorage<OrderProps>(
+    //   getOrderIdbKey(newOrderProps.id),
+    //   newOrderProps
+    // );
+    setOrders((currentOrders) => [...currentOrders, newOrderProps]);
+  }, [setOrders]);
 
   return addOrder;
 }

@@ -4,6 +4,7 @@ import { Order, StatusCode } from '../models/Order';
 import './OrderDetails.css';
 
 export const OrderDetails = ({ id }: { id: Order['id'] }) => {
+  console.log('OrderDetails', id);
   const [order, updateOrder] = useOrder(id);
 
   useEffect(() => {
