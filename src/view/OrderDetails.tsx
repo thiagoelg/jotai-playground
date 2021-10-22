@@ -1,18 +1,21 @@
 import './OrderDetails.css';
 
-import React, { memo, useCallback, useEffect, useState } from 'react';
+import { useAtom } from 'jotai';
+import React, { memo, useCallback, useEffect } from 'react';
 
-import { Order, OrderProps, StatusCode } from '../models/Order';
+import { Order, StatusCode } from '../models/Order';
+import { singleOrderAtom, updateOrderStatusAtom } from '../state';
 
-export const OrderDetails = memo(({orderProps, updateOrder}: {orderProps: OrderProps, updateOrder: (order: OrderProps) => void}) => {
+export const OrderDetails = memo(({orderId}: {orderId: Order['id']}) => {
 
-  const [order] = useState(new Order(orderProps));
+  const [order] = useAtom(singleOrderAtom(orderId));
+  const [, updateOrderStatus] = useAtom(updateOrderStatusAtom);
 
   useEffect(() => {
     console.log(`Order atom updated: ${order.id}`);
   }, [order]);
 
-  const addEvent = useCallback((event: StatusCode) => { order.processEvent(event); updateOrder(order.primitify()); }, [updateOrder, order]);
+  const updateStatus = useCallback((event: StatusCode) => updateOrderStatus([order.id, event]), [order]);
 
   return (
     <div className="OrderDetails">
@@ -21,9 +24,9 @@ export const OrderDetails = memo(({orderProps, updateOrder}: {orderProps: OrderP
       <div className="OrderDetails__events">Events: [{order.events.join(', ')}]</div>
       <div className="OrderDetails__items">Items: [{order.items.map((item) => JSON.stringify(item)).join(', ')}]</div>
       <div className="OrderDetaisl__actions">
-        {order.canConfirm() && <button onClick={() => addEvent(StatusCode.CONFIRMED)}>Confirmar</button>}
-        {order.canDispatch() && <button onClick={() => addEvent(StatusCode.DISPATCHED)}>Despachar</button>}
-        {order.canConclude() && <button onClick={() => addEvent(StatusCode.CONCLUDED)}>Concluir</button>}
+        {order.status === StatusCode.NEW && <button onClick={() => updateStatus(StatusCode.CONFIRMED)}>Confirmar</button>}
+        {order.status === StatusCode.CONFIRMED && <button onClick={() => updateStatus(StatusCode.DISPATCHED)}>Despachar</button>}
+        {order.status === StatusCode.DISPATCHED && <button onClick={() => updateStatus(StatusCode.CONCLUDED)}>Concluir</button>}
       </div>
     </div>
   )

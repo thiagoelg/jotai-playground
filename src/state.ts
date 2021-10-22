@@ -1,7 +1,8 @@
 import { get, set } from 'idb-keyval';
-import { atomWithStorage } from 'jotai/utils';
+import { atom } from 'jotai';
+import { atomFamily, atomWithStorage } from 'jotai/utils';
 
-import { OrderProps } from './models/Order';
+import { Order, StatusCode } from './models/Order';
 
 function atomWithAsyncStorage<T>(key: string, initial: T) {
   return atomWithStorage<T>(key, initial, {
@@ -19,20 +20,26 @@ function atomWithAsyncStorage<T>(key: string, initial: T) {
   });
 }
 
-export const ordersAtom = atomWithAsyncStorage<OrderProps[]>('order', []);
+export const ordersAtom = atomWithAsyncStorage<Order[]>('order', []);
 
-export interface OrdersActions {
-  type: 'add' | 'update';
-  payload: OrderProps;
-}
+export const singleOrderAtom = atomFamily((id: Order['id']) => atom(get => get(ordersAtom).find(o => o.id === id)!));
 
-export const ordersReducer = (orders: OrderProps[], {type, payload}: OrdersActions) => {
-  console.log('reducer', type, payload, orders);
-  if (type === 'add') {
-    return [...orders, payload];
-  }
-  if(type === 'update') {
-    return orders.map(order => order.id === payload.id ? payload : order);
-  }
-  throw new Error('unknown action type')
-}
+export const addOrderAtom = atom(null,
+  (get, set, order: Order) => set(ordersAtom, [...get(ordersAtom), order])
+)
+
+export const updateOrderStatusAtom = atom(null,
+  (get, set, [orderId, status]: [Order['id'], StatusCode]) => {
+    const newOrders = get(ordersAtom).map(order => {
+      if (order.id !== orderId) return order;
+      return {
+        ...order,
+        events: [
+          ...order.events,
+          status,
+        ],
+        status,
+      }
+    });
+    set(ordersAtom, newOrders);
+})
