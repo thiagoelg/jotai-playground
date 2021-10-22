@@ -1,28 +1,31 @@
 import { useAtom } from 'jotai';
-import React, { Suspense, useEffect } from 'react';
-import { orderIdsAtom, useCreateOrder } from '../state';
+import { useReducerAtom } from 'jotai/utils';
+import React, { Suspense, useCallback, useEffect, useState } from 'react';
+import { generateOrderProps, OrderProps } from '../models/Order';
+import { ordersAtom, ordersReducer } from '../state';
 import { OrderDetails } from './OrderDetails';
 import './OrderList.css';
 
 export const OrderList = () => {
-  const [ids] = useAtom(orderIdsAtom);
-  console.log('OrderList', ids);
-  const addOrder = useCreateOrder();
+  const [orders, dispatch] = useReducerAtom(ordersAtom, ordersReducer);
 
   useEffect(() => {
-    console.log(`Order list updated: ${ids.join(', ')}`);
-  }, [ids]);
+    console.log(`Order list updated: ${orders.map(o => o.id).join(', ')}`);
+  }, [orders]);
+
+  const addOrder = useCallback(() => dispatch({ type: 'add', payload: generateOrderProps()}), []);
+  const updateOrder = useCallback((payload: OrderProps) => dispatch({ type: 'update', payload}), []);
   
   return (
     <div>
       <button onClick={addOrder}>Criar Order</button>
-      <div className="OrderList">
-        {ids.map((id) => (
-          <Suspense fallback="Loading Details..." key={id}>
-            <OrderDetails id={id} />
-          </Suspense>
-        ))}
-      </div>
+        <Suspense fallback="Loading Details...">
+          <div className="OrderList">
+            {orders.map((order) => (
+                <OrderDetails key={order.id} orderProps={order} updateOrder={updateOrder} />
+            ))}
+          </div>
+        </Suspense>
     </div>
   )
 }

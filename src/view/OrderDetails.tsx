@@ -1,17 +1,18 @@
-import React, { useCallback, useEffect } from 'react';
-import { useOrder } from '../state';
-import { Order, StatusCode } from '../models/Order';
 import './OrderDetails.css';
 
-export const OrderDetails = ({ id }: { id: Order['id'] }) => {
-  console.log('OrderDetails', id);
-  const [order, updateOrder] = useOrder(id);
+import React, { memo, useCallback, useEffect, useState } from 'react';
+
+import { Order, OrderProps, StatusCode } from '../models/Order';
+
+export const OrderDetails = memo(({orderProps, updateOrder}: {orderProps: OrderProps, updateOrder: (order: OrderProps) => void}) => {
+
+  const [order] = useState(new Order(orderProps));
 
   useEffect(() => {
     console.log(`Order atom updated: ${order.id}`);
   }, [order]);
 
-  const addEvent = useCallback((event: StatusCode) => { order.processEvent(event); updateOrder(order); }, [updateOrder, order]);
+  const addEvent = useCallback((event: StatusCode) => { order.processEvent(event); updateOrder(order.primitify()); }, [updateOrder, order]);
 
   return (
     <div className="OrderDetails">
@@ -26,4 +27,4 @@ export const OrderDetails = ({ id }: { id: Order['id'] }) => {
       </div>
     </div>
   )
-}
+})
