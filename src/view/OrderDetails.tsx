@@ -1,21 +1,17 @@
 import './OrderDetails.css';
 
-import { useAtom } from 'jotai';
-import React, { memo, useCallback, useEffect } from 'react';
+import React, { memo, useEffect } from 'react';
 
 import { Order, StatusCode } from '../models/Order';
-import { singleOrderAtom, updateOrderStatusAtom } from '../state';
+import { useOrder } from '../state';
 
 export const OrderDetails = memo(({orderId}: {orderId: Order['id']}) => {
 
-  const [order] = useAtom(singleOrderAtom(orderId));
-  const [, updateOrderStatus] = useAtom(updateOrderStatusAtom);
+  const [order, updateStatus] = useOrder(orderId);
 
   useEffect(() => {
     console.log(`Order atom updated: ${order.id}`);
   }, [order]);
-
-  const updateStatus = useCallback((event: StatusCode) => updateOrderStatus([order.id, event]), [order]);
 
   return (
     <div className="OrderDetails">

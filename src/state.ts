@@ -1,6 +1,7 @@
 import { get, set } from 'idb-keyval';
-import { atom } from 'jotai';
+import { atom, useAtom } from 'jotai';
 import { atomFamily, atomWithStorage } from 'jotai/utils';
+import { useCallback } from 'react';
 
 import { Order, StatusCode } from './models/Order';
 
@@ -20,15 +21,21 @@ function atomWithAsyncStorage<T>(key: string, initial: T) {
   });
 }
 
-export const ordersAtom = atomWithAsyncStorage<Order[]>('order', []);
+const ordersAtom = atomWithAsyncStorage<Order[]>('order', []);
 
-export const singleOrderAtom = atomFamily((id: Order['id']) => atom(get => get(ordersAtom).find(o => o.id === id)!));
-
-export const addOrderAtom = atom(null,
+const addOrderAtom = atom(null,
   (get, set, order: Order) => set(ordersAtom, [...get(ordersAtom), order])
 )
 
-export const updateOrderStatusAtom = atom(null,
+export function useOrderList(): [Order[], (order: Order) => void] {
+  const [orders] = useAtom(ordersAtom);
+  const [, addOrder] = useAtom(addOrderAtom);
+  return [orders, addOrder];
+}
+
+const singleOrderAtom = atomFamily((id: Order['id']) => atom(get => get(ordersAtom).find(o => o.id === id)!));
+
+const updateOrderStatusAtom = atom(null,
   (get, set, [orderId, status]: [Order['id'], StatusCode]) => {
     const newOrders = get(ordersAtom).map(order => {
       if (order.id !== orderId) return order;
@@ -42,4 +49,11 @@ export const updateOrderStatusAtom = atom(null,
       }
     });
     set(ordersAtom, newOrders);
-})
+});
+
+export function useOrder(id: Order['id']): [Order, (event: StatusCode) => void] {
+  const [order] = useAtom(singleOrderAtom(id));
+  const [, updateOrderStatus] = useAtom(updateOrderStatusAtom);
+  const updateStatus = useCallback((event: StatusCode) => updateOrderStatus([order.id, event]), [order]);
+  return [order, updateStatus];
+};

@@ -2,14 +2,12 @@ import './OrderList.css';
 
 import React, { Suspense, useCallback, useEffect } from 'react';
 
-import { addOrderAtom, ordersAtom } from '../state';
-import { OrderDetails } from './OrderDetails';
-import { useAtom } from 'jotai';
 import { generateOrderProps } from '../models/Order';
+import { useOrderList } from '../state';
+import { OrderDetails } from './OrderDetails';
 
 export const OrderList = () => {
-  const [orders] = useAtom(ordersAtom);
-  const [, addOrder] = useAtom(addOrderAtom);
+  const [orders, addOrder] = useOrderList();
 
   useEffect(() => {
     console.log(`Order list updated: ${orders.map(o => o.id).join(', ')}`);
