@@ -1,28 +1,30 @@
-import { useAtom } from 'jotai';
-import React, { Suspense, useEffect } from 'react';
-import { orderIdsAtom, useCreateOrder } from '../state';
-import { OrderDetails } from './OrderDetails';
 import './OrderList.css';
 
+import React, { Suspense, useCallback, useEffect } from 'react';
+
+import { generateOrderProps } from '../models/Order';
+import { useOrderList } from '../state';
+import { OrderDetails } from './OrderDetails';
+
 export const OrderList = () => {
-  const [ids] = useAtom(orderIdsAtom);
-  console.log('OrderList', ids);
-  const addOrder = useCreateOrder();
+  const [orders, addOrder] = useOrderList();
 
   useEffect(() => {
-    console.log(`Order list updated: ${ids.join(', ')}`);
-  }, [ids]);
+    console.log(`Order list updated: ${orders.map(o => o.id).join(', ')}`);
+  }, [orders]);
+
+  const addGeneratedOrder = useCallback(() => addOrder(generateOrderProps()), []);
   
   return (
     <div>
-      <button onClick={addOrder}>Criar Order</button>
-      <div className="OrderList">
-        {ids.map((id) => (
-          <Suspense fallback="Loading Details..." key={id}>
-            <OrderDetails id={id} />
-          </Suspense>
-        ))}
-      </div>
+      <button onClick={addGeneratedOrder}>Criar Order</button>
+        <Suspense fallback="Loading Details...">
+          <div className="OrderList">
+            {orders.map((order) => (
+                <OrderDetails key={order.id} orderId={order.id}/>
+            ))}
+          </div>
+        </Suspense>
     </div>
   )
 }

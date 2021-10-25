@@ -1,6 +1,6 @@
 import faker from 'faker';
-import { Item, ItemProps } from './Item';
-import { Primitifiable } from './Primitifiable';
+
+import { ItemProps } from './Item';
 
 
 export enum StatusCode {
@@ -10,7 +10,7 @@ export enum StatusCode {
   CONCLUDED = 'CONCLUDED'
 }
 
-export type OrderProps = {
+export type Order = {
   id: string;
   reference: string;
   status: StatusCode;
@@ -18,7 +18,7 @@ export type OrderProps = {
   items: ItemProps[];
 }
 
-export const generateOrderProps = (): OrderProps => ({
+export const generateOrderProps = (): Order => ({
   id: faker.datatype.uuid(),
   reference: faker.datatype.number({ min: 1000, max: 9999 }).toString(),
   status: StatusCode.NEW,
@@ -30,53 +30,3 @@ export const generateOrderProps = (): OrderProps => ({
       price: faker.commerce.price(1, 100, 2, 'R$')
     }))
 });
-
-
-export class Order implements Primitifiable<OrderProps> {
-  id: string;
-  reference: string;
-  status: StatusCode;
-  events: StatusCode[];
-  items: Item[];
-
-  constructor(props: OrderProps) {
-    this.id = props.id;
-    this.reference = props.reference;
-    this.status = props.status;
-    this.events = props.events;
-    this.items = props.items.map((item) => new Item(item));
-  }
-
-  processEvent(event: StatusCode) {
-    this.events.push(event);
-    this.status = event;
-  }
-
-  canConfirm() {
-    return this.status === StatusCode.NEW;
-  }
-
-  canDispatch() {
-    return this.status === StatusCode.CONFIRMED;
-  }
-
-  canConclude() {
-    return this.status === StatusCode.DISPATCHED;
-  }
-
-  primitify() {
-    const { id, reference, status, events, items } = this;
-    return {
-      id, reference, status, events, items: items.map((item) => item.primitify())
-    };
-  }
-}
-
-export function getOrderIdbKey(id: Order['id']) {
-  return `order/${id}`;
-}
-
-export function getOrderIdsIdbKey() {
-  return `order-ids`;
-}
-

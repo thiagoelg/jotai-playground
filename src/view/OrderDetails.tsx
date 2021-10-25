@@ -1,17 +1,17 @@
-import React, { useCallback, useEffect } from 'react';
-import { useOrder } from '../state';
-import { Order, StatusCode } from '../models/Order';
 import './OrderDetails.css';
 
-export const OrderDetails = ({ id }: { id: Order['id'] }) => {
-  console.log('OrderDetails', id);
-  const [order, updateOrder] = useOrder(id);
+import React, { memo, useEffect } from 'react';
+
+import { Order, StatusCode } from '../models/Order';
+import { useOrder } from '../state';
+
+export const OrderDetails = memo(({orderId}: {orderId: Order['id']}) => {
+
+  const [order, updateStatus] = useOrder(orderId);
 
   useEffect(() => {
     console.log(`Order atom updated: ${order.id}`);
   }, [order]);
-
-  const addEvent = useCallback((event: StatusCode) => { order.processEvent(event); updateOrder(order); }, [updateOrder, order]);
 
   return (
     <div className="OrderDetails">
@@ -20,10 +20,10 @@ export const OrderDetails = ({ id }: { id: Order['id'] }) => {
       <div className="OrderDetails__events">Events: [{order.events.join(', ')}]</div>
       <div className="OrderDetails__items">Items: [{order.items.map((item) => JSON.stringify(item)).join(', ')}]</div>
       <div className="OrderDetaisl__actions">
-        {order.canConfirm() && <button onClick={() => addEvent(StatusCode.CONFIRMED)}>Confirmar</button>}
-        {order.canDispatch() && <button onClick={() => addEvent(StatusCode.DISPATCHED)}>Despachar</button>}
-        {order.canConclude() && <button onClick={() => addEvent(StatusCode.CONCLUDED)}>Concluir</button>}
+        {order.status === StatusCode.NEW && <button onClick={() => updateStatus(StatusCode.CONFIRMED)}>Confirmar</button>}
+        {order.status === StatusCode.CONFIRMED && <button onClick={() => updateStatus(StatusCode.DISPATCHED)}>Despachar</button>}
+        {order.status === StatusCode.DISPATCHED && <button onClick={() => updateStatus(StatusCode.CONCLUDED)}>Concluir</button>}
       </div>
     </div>
   )
-}
+})
